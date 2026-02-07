@@ -1,0 +1,991 @@
+/* Panel container */
+.orchestrator-panel {
+    margin-top: 6px;
+    padding: 10px 12px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    max-width: 320px;
+}
+
+/* Search input wrapper effect */
+.orchestrator-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px 8px 36px; /* space for icon */
+    font-size: 13px;
+    border: 1px solid #cfd7df;
+    border-radius: 4px;
+    background-color: #ffffff;
+    background-image: none !important;
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    background-size: 16px 16px;
+    outline: none;
+}
+
+/* Focus state */
+.orchestrator-search:focus {
+    border-color: #6ea8fe;
+    box-shadow: 0 0 0 2px rgba(110,168,254,0.25);
+}
+
+/* Divider between search suggestions and full list */
+.orch-divider {
+    height: 1px;
+    margin: 10px 0 8px 0;
+    background: #d8dee4;
+}
+
+/* Option list items */
+.orch-option {
+    padding: 6px 8px;
+    margin: 2px 0;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Hover effect */
+.orch-option:hover {
+    background: #e9f2ff;
+}
+
+/* Disabled options */
+.orch-option.disabled {
+    color: #9aa4ad;
+    cursor: not-allowed;
+}
+
+.orch-option.disabled:hover {
+    background: transparent;
+}
+
+/* Status line */
+.orchestrator-status {
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.orchestrator-status:hover {
+    text-decoration: underline;
+}
+
+.orchestrator-input-wrapper {
+    position: relative;
+    width: 320px;
+}
+
+.orchestrator-search {
+    width: 100%;
+    padding: 8px 10px 8px 36px;
+    border: 1px solid #cfd7df;
+    border-radius: 6px;
+    background-color: #ffffff;
+    background-image: none !important;
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    background-size: 16px 16px;
+    font-size: 13px;
+}
+
+.orchestrator-status-label {
+    position: absolute;
+    left: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 12px;
+    display: flex;
+    gap: 4px;
+}
+
+.orch-label-muted {
+    color: #8b949e;
+}
+
+.orch-label-sep {
+    color: #b0b7bf;
+}
+
+.orch-label-active {
+    color: #24292f;
+    font-weight: 500;
+}
+
+/* όταν γράφεις → κρύβεται το label */
+.orchestrator-search:not(:placeholder-shown) + .orchestrator-status-label {
+    display: none;
+}
+
+/* ============================================================
+   PATCH – ORCHESTRATOR HEADER WIDTH & BALANCE
+   ------------------------------------------------------------
+   After removing "Tab Orchestrator" label and technical lines,
+   this ensures the header area remains visually stable and
+   SCADA-appropriate (control strip, not form field).
+   ============================================================ */
+
+/* Keep orchestrator block visually wider than input */
+.tab-view-mode {
+    min-width: 360px;          /* ⬅️ ΚΥΡΙΟ KNOB (340–420px) */
+    padding-right: 12px;       /* optical breathing room */
+}
+
+/* Ensure control does not collapse */
+#orchestrator-control {
+    width: 100%;
+}
+
+/* Input itself stays compact */
+.orchestrator-search {
+    max-width: 320px;          /* ⬅️ input narrower than container */
+}
+
+/* Align control vertically after title removal */
+.tab-header-row {
+    align-items: center;
+}
+
+/* ============================================================
+   FIX – ORCHESTRATOR HEADER WIDTH (SCADA CONTROL STRIP)
+   ------------------------------------------------------------
+   Root cause:
+   .tab-view-mode is a flex item that shrink-wraps its content.
+   Solution:
+   Force it to claim horizontal space like a control panel.
+   ============================================================ */
+
+.tab-view-mode {
+    flex: 0 0 520px;     /* ⬅️ ΚΥΡΙΟ KNOB (380–480px SCADA range) */
+    max-width: 580px;
+}
+
+/* Optional: allow future expansion */
+.tab-header-row {
+    justify-content: flex-start;
+}
+
+/* ============================================================
+   ORCHESTRATOR PANEL – CONTRACTION (EXPLICIT HIDE CONTROL)
+   ============================================================ */
+
+/* Header strip inside the panel */
+.orchestrator-panel-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 4px 6px 2px 6px;
+}
+
+/* Hide / contract button */
+.orchestrator-panel-hide-btn {
+    width: 20px;
+    height: 20px;
+
+    border: none;
+    background-color: transparent;
+
+    background-image: url("/assets/contraction_icon.svg");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+
+    cursor: pointer;
+    opacity: 0.65;
+
+    /* SCADA: no focus glow, no animation */
+    outline: none;
+}
+
+/* Hover feedback (subtle, not consumer-ish) */
+.orchestrator-panel-hide-btn:hover {
+    opacity: 0.9;
+}
+
+/* Optional: active click feedback */
+.orchestrator-panel-hide-btn:active {
+    opacity: 1;
+}
+
+/* Make sure the button never stretches the panel */
+.orchestrator-panel-hide-btn:focus {
+    box-shadow: none;
+}
+
+
+/* ============================================================
+   PATCH – ORCHESTRATOR PANEL HEADER REFINEMENT
+   ------------------------------------------------------------
+   Slightly larger contraction icon
+   Slightly tighter header height (SCADA polish)
+   ============================================================ */
+
+/* Reduce vertical padding of the header */
+.orchestrator-panel-header {
+    padding: 2px 6px 1px 6px;   /* ⬅️ πιο “σφιχτό” */
+    min-height: 22px;
+}
+
+/* Slightly larger contraction icon */
+.orchestrator-panel-hide-btn {
+    width: 22px;
+    height: 22px;
+
+    background-size: 16px 16px; /* ⬅️ από 14px → 16px */
+}
+
+
+/* ------------------------------------------------------------
+   DASH 4.0 FIX – Disable native search affordance
+   Scope: ORCHESTRATOR SEARCH ONLY
+   ------------------------------------------------------------ */
+/* .orchestrator-search {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.orchestrator-search::-webkit-search-decoration,
+.orchestrator-search::-webkit-search-cancel-button,
+.orchestrator-search::-webkit-search-results-button,
+.orchestrator-search::-webkit-search-results-decoration {
+    display: none;
+} */
+
+.orchestrator-input-wrapper {
+    position: relative;
+}
+
+.orchestrator-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.orchestrator-search {
+    padding-left: 36px;
+}
+
+.orchestrator-status-label {
+    left: 36px;
+}
+
+
+
+
+/* ============================================================
+   ORCHESTRATOR POSITIONING PATCH
+   ------------------------------------------------------------
+   Scope:
+   - orchestrator-status-label (text)
+   - orchestrator-icon
+   - orchestrator-input-wrapper
+   ------------------------------------------------------------
+   Goal:
+   - Align text + icon + input on SAME ROW
+   - No Dash / browser dependency
+   ============================================================ */
+
+/* ============================================================
+   1️⃣ WRAPPER (SOURCE OF TRUTH FOR POSITIONING)
+   ============================================================ */
+.orchestrator-input-wrapper {
+    position: relative;          /* REQUIRED anchor */
+    display: flex;               /* 🔥 key change */
+    align-items: center;         /* vertical alignment */
+
+    /* DEFAULT LAYOUT */
+    flex-direction: row;         /* text + icon + input in one row */
+
+    /* OPTIONAL:
+       column  -> text above input
+       row     -> everything inline
+    */
+    /* flex-direction: column; */
+
+    gap: 10px;                   /* spacing between elements */
+}
+
+
+/* ============================================================
+   2️⃣ TEXT LABEL
+   ============================================================ */
+.orchestrator-status-label {
+    position: relative;          /* SAFE default */
+    white-space: nowrap;
+
+    /* DEFAULT */
+    order: 0;                    /* text first */
+
+    /* OPTIONAL ORDERING */
+    /* order: 1; */              /* after icon */
+    /* order: 2; */              /* after input */
+
+    /* OPTIONAL POSITIONING */
+    /* position: absolute; */
+    /* top: 0; left: 0; */
+
+    font-size: 14px;
+    line-height: 18px;
+}
+
+
+/* ============================================================
+   3️⃣ ICON
+   ============================================================ */
+.orchestrator-icon {
+    position: relative;          /* inline element */
+
+    width: 16px;
+    height: 16px;
+
+    flex: 0 0 auto;
+
+    /* DEFAULT ORDER */
+    order: 1;                    /* between text & input */
+
+    /* OPTIONAL ORDER */
+    /* order: 0; */              /* before text */
+    /* order: 2; */              /* after input */
+
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   4️⃣ INPUT
+   ============================================================ */
+.orchestrator-search {
+    position: relative;
+
+    flex: 1 1 auto;              /* input grows */
+
+    /* DEFAULT ORDER */
+    order: 2;
+
+    /* OPTIONAL */
+    /* order: 1; */
+
+    /* IMPORTANT: input MUST NOT carry icon */
+    background-image: none !important;
+    padding-left: 8px;
+}
+
+
+/* ============================================================
+   FINAL PATCH – ORCHESTRATOR SEARCH ENGINE LAYOUT
+   ------------------------------------------------------------
+   Layout:
+   [ Label | Icon | Input-text-area ]
+   ------------------------------------------------------------
+   Design goals:
+   - White box larger (width + height)
+   - Label inside white box (left)
+   - Search icon between label and text
+   - Dash 3.4 / 4.0 safe
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   1️⃣ MAIN WRAPPER
+   ------------------------------------------------------------ */
+.orchestrator-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    /* 🔧 SIZE CONTROL */
+    width: 460px;          /* ⬅️ μεγαλώνει προς τα αριστερά */
+    min-height: 44px;      /* ⬅️ λίγο πιο ψηλό */
+
+    padding: 6px 10px;
+
+    border: 1px solid #cfd7df;
+    border-radius: 6px;
+    background-color: #ffffff;
+
+    box-sizing: border-box;
+}
+
+
+/* ------------------------------------------------------------
+   2️⃣ STATUS LABEL (LEFT, INSIDE WHITE BOX)
+   ------------------------------------------------------------ */
+.orchestrator-status-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    white-space: nowrap;
+
+    font-size: 12px;
+    line-height: 16px;
+
+    margin-right: 8px;     /* space before icon */
+    pointer-events: none;
+}
+
+
+/* ------------------------------------------------------------
+   3️⃣ SEARCH ICON (BETWEEN LABEL AND TEXT)
+   ------------------------------------------------------------ */
+.orchestrator-icon {
+    position: relative;
+
+    width: 16px;
+    height: 16px;
+
+    margin-right: 8px;     /* space before text */
+
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+
+/* ------------------------------------------------------------
+   4️⃣ INPUT (TEXT AREA ONLY)
+   ------------------------------------------------------------ */
+.orchestrator-search {
+    flex: 1 1 auto;
+
+    height: 30px;
+    font-size: 13px;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+    padding: 0;
+    margin: 0;
+
+    /* 🔥 IMPORTANT: no icon from input */
+    background-image: none !important;
+}
+
+
+/* ------------------------------------------------------------
+   5️⃣ HIDE LABEL WHEN USER TYPES (EXISTING BEHAVIOR)
+   ------------------------------------------------------------ */
+.orchestrator-search:not(:placeholder-shown)
+    ~ .orchestrator-status-label {
+    display: none;
+}
+
+
+
+/* ============================================================
+   ORCHESTRATOR HEADER – FINAL LAYOUT & STABILIZATION
+   ------------------------------------------------------------
+   Scope:
+   - Header search engine ONLY
+   - Does NOT affect dropdown panel
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   1. HEADER ROW – ALIGN LEFT, NO JITTER
+   ------------------------------------------------------------ */
+.tab-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+
+/* ------------------------------------------------------------
+   2. VIEW MODE CONTAINER (LEFT ANCHORED)
+   ------------------------------------------------------------ */
+.tab-view-mode {
+    flex: 0 0 520px;          /* stable SCADA width */
+    max-width: 560px;
+    padding-right: 12px;
+}
+
+
+/* ------------------------------------------------------------
+   3. ORCHESTRATOR CONTROL WRAPPER
+   ------------------------------------------------------------ */
+#orchestrator-control {
+    width: 100%;
+}
+
+
+/* ------------------------------------------------------------
+   4. INPUT WRAPPER (WHITE BOX – SOURCE OF TRUTH)
+   ------------------------------------------------------------ */
+.orchestrator-input-wrapper {
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+    min-height: 42px;
+
+    padding: 6px 10px;
+
+    border: 1px solid #cfd7df;
+    border-radius: 6px;
+    background-color: #ffffff;
+
+    box-sizing: border-box;
+}
+
+
+/* ------------------------------------------------------------
+   5. STATUS LABEL (LEFT, INSIDE WHITE BOX)
+   ------------------------------------------------------------ */
+.orchestrator-status-label {
+    display: flex;
+    align-items: center;
+
+    white-space: nowrap;
+    pointer-events: none;
+
+    font-size: 12px;
+    line-height: 16px;
+
+    margin-right: 10px;
+}
+
+
+/* Label colors (unchanged semantics) */
+.orch-label-muted {
+    color: #9aa4ad;
+}
+
+.orch-label-sep {
+    color: #b0b7bf;
+}
+
+.orch-label-active {
+    color: #24292f;
+    font-weight: 500;
+}
+
+
+/* ------------------------------------------------------------
+   6. SEARCH ICON (BETWEEN LABEL AND TEXT)
+   ------------------------------------------------------------ */
+.orchestrator-icon {
+    width: 18px;              /* ⬅️ slightly bigger */
+    height: 18px;
+
+    margin-right: 10px;
+
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+
+/* ------------------------------------------------------------
+   7. INPUT (TEXT ONLY – NO ICON, NO BORDER)
+   ------------------------------------------------------------ */
+.orchestrator-search {
+    flex: 1 1 auto;
+
+    height: 28px;
+    font-size: 13px;
+
+    border: none;
+    outline: none;
+
+    padding: 0;
+    margin: 0;
+
+    background: transparent;
+    background-image: none !important;
+}
+
+
+/* ------------------------------------------------------------
+   8. LABEL VISIBILITY RULE (KEEP EXISTING BEHAVIOR)
+   ------------------------------------------------------------ */
+.orchestrator-search:not(:placeholder-shown)
+    ~ .orchestrator-status-label {
+    display: none;
+}
+
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – FINAL, INPUT-CENTRIC DESIGN
+   ------------------------------------------------------------
+   Everything lives INSIDE the input.
+   No extra wrappers for icon / label.
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   1. INPUT WRAPPER (POSITION ANCHOR ONLY)
+   ------------------------------------------------------------ */
+.orchestrator-input-wrapper {
+    position: relative;
+    width: 520px;              /* ⬅️ covers full search area */
+}
+
+
+/* ------------------------------------------------------------
+   2. SEARCH INPUT (THE ONLY VISUAL ELEMENT)
+   ------------------------------------------------------------ */
+.orchestrator-search {
+    width: 100%;
+    height: 42px;              /* ⬅️ λίγο πιο ψηλό */
+
+    padding-left: 44px;        /* ⬅️ χώρος για icon */
+    padding-right: 12px;
+
+    font-size: 13px;
+    line-height: 18px;
+
+    border: none;              /* ❌ no outline */
+    border-radius: 6px;
+
+    background-color: #ffffff;
+
+    /* 🔍 SINGLE source of icon */
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 18px 18px;
+
+    outline: none;
+    box-shadow: none;
+}
+
+
+/* ------------------------------------------------------------
+   3. STATUS LABEL (FLOATING TEXT INSIDE INPUT)
+   ------------------------------------------------------------ */
+.orchestrator-status-label {
+    position: absolute;
+    left: 44px;                /* ⬅️ aligned with text */
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    gap: 4px;
+
+    font-size: 12px;
+    line-height: 16px;
+
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+
+/* Label colors (unchanged semantics) */
+.orch-label-muted {
+    color: #9aa4ad;
+}
+
+.orch-label-sep {
+    color: #b0b7bf;
+}
+
+.orch-label-active {
+    color: #24292f;
+    font-weight: 500;
+}
+
+
+/* ------------------------------------------------------------
+   4. HIDE LABEL ON FOCUS OR TYPING
+   ------------------------------------------------------------ */
+.orchestrator-search:focus + .orchestrator-status-label,
+.orchestrator-search:not(:placeholder-shown) + .orchestrator-status-label {
+    display: none;
+}
+
+
+/* ------------------------------------------------------------
+   5. HARD RESET – PREVENT DASH / BROWSER ICONS
+   ------------------------------------------------------------ */
+.orchestrator-search {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.orchestrator-search::-webkit-search-decoration,
+.orchestrator-search::-webkit-search-cancel-button,
+.orchestrator-search::-webkit-search-results-button,
+.orchestrator-search::-webkit-search-results-decoration {
+    display: none;
+}
+
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – CORRECT LAYERED MODEL
+   ============================================================ */
+
+/* 1️⃣ Wrapper = positioning context */
+.orchestrator-input-wrapper {
+    position: relative;
+    width: 520px;
+    height: 44px;
+}
+
+/* 2️⃣ Input = full search area (bottom layer) */
+.orchestrator-search {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    height: 100%;
+
+    padding-left: 48px;   /* χώρος για icon */
+    padding-right: 12px;
+
+    font-size: 13px;
+    line-height: 18px;
+
+    border: none;
+    border-radius: 6px;
+    outline: none;
+
+    background-color: #ffffff;
+    background-image: none !important;
+
+    box-sizing: border-box;
+}
+
+/* 3️⃣ Search icon = INSIDE search area */
+.orchestrator-icon {
+    position: absolute;
+    z-index: 2;
+
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 18px;
+    height: 18px;
+
+    background-image: url("/assets/search_icon_orchestrator.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* 4️⃣ Text label = INSIDE search area */
+.orchestrator-status-label {
+    position: absolute;
+    z-index: 2;
+
+    left: 48px;           /* align with input text */
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    gap: 4px;
+
+    font-size: 12px;
+    line-height: 16px;
+
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* 5️⃣ Label colors */
+.orch-label-muted { color: #9aa4ad; }
+.orch-label-sep   { color: #b0b7bf; }
+.orch-label-active {
+    color: #24292f;
+    font-weight: 500;
+}
+
+/* 6️⃣ Hide label when typing or focus */
+.orchestrator-search:focus ~ .orchestrator-status-label,
+.orchestrator-search:not(:placeholder-shown) ~ .orchestrator-status-label {
+    display: none;
+}
+
+/* 7️⃣ Hard reset – prevent browser/Dash icons */
+.orchestrator-search {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.orchestrator-search::-webkit-search-decoration,
+.orchestrator-search::-webkit-search-cancel-button,
+.orchestrator-search::-webkit-search-results-button,
+.orchestrator-search::-webkit-search-results-decoration {
+    display: none;
+}
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – FINAL MICRO TUNING
+   ============================================================ */
+
+/* 🤍 WHITE CONTAINER hugs the search area */
+.orchestrator-input-wrapper {
+    width: auto;              /* ⬅️ αφήνει το input να ορίσει μέγεθος */
+    padding: 4px;             /* ⬅️ λιγότερο "αέρας" γύρω */
+}
+
+/* 🟣 SEARCH AREA (INPUT) – slightly bigger */
+.orchestrator-search {
+    width: 420px;             /* ⬅️ λίγο πιο μακρύ */
+    height: 46px;             /* ⬅️ λίγο πιο παχύ */
+
+    padding-left: 48px;       /* κρατά icon/label alignment */
+    padding-right: 14px;
+}
+
+/* 🔍 ICON – micro adjust για το νέο height */
+.orchestrator-icon {
+    width: 19px;              /* ⬅️ ελάχιστα μεγαλύτερο */
+    height: 19px;
+}
+
+/* 🏷️ LABEL – vertical re-center (fine tuning) */
+.orchestrator-status-label {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – FINAL CLEANUP & POLISH
+   ============================================================ */
+
+/* 🤍 White container hugs the search input tightly */
+.orchestrator-input-wrapper {
+    padding: 2px;              /* ⬅️ λιγότερος αέρας */
+    background: transparent;   /* ⬅️ καμία έμφαση */
+}
+
+/* 🟣 Search input – neutral default */
+.orchestrator-search {
+    width: 440px;
+    height: 48px;
+
+    padding-left: 48px;
+    padding-right: 14px;
+
+    border: 1px solid #d0d7de;     /* ⬅️ ουδέτερο γκρι */
+    border-radius: 6px;
+
+    background-color: #ffffff;
+
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 🟣 Focus / active state – NOT purple */
+.orchestrator-search:focus {
+    border-color: #b8c0c8;         /* ⬅️ απαλό γκρι */
+    box-shadow: none;
+}
+
+/* 🔍 Icon – stays visible, slightly emphasized */
+.orchestrator-icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.85;
+}
+
+/* 🏷️ Label – visible by default */
+.orchestrator-status-label {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+/* 🏷️ Label – disappears cleanly on focus / typing */
+.orchestrator-search:focus ~ .orchestrator-status-label,
+.orchestrator-search:not(:placeholder-shown) ~ .orchestrator-status-label {
+    opacity: 0;                  /* ⬅️ όχι display:none */
+}
+
+/* 🚫 Kill ANY browser / Dash injected outlines */
+.orchestrator-search,
+.orchestrator-search:focus-visible {
+    outline: none !important;
+}
+
+/* 🚫 Kill any parent focus rings */
+#orchestrator-status:focus,
+#orchestrator-status:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 🧹 Make the container hug the input */
+.tab-view-mode {
+    flex: 0 0 auto !important;   /* ⬅️ ΟΧΙ fixed width */
+    width: auto !important;
+}
+
+#orchestrator-control {
+    width: auto !important;
+}
+
+/* Wrapper hugs the input */
+.orchestrator-input-wrapper {
+    width: fit-content;          /* ⬅️ ΤΟ ΚΛΕΙΔΙ */
+    padding: 0;                  /* ⬅️ καθόλου αέρας */
+}
+
+/* 🏷️ Label default */
+.orchestrator-status-label {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+/* 🏷️ Hide label when input is focused or typing */
+.orchestrator-input-wrapper:focus-within
+.orchestrator-status-label {
+    opacity: 0;
+}
+
+.orchestrator-search {
+    border: 1px solid #d0d7de;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.orchestrator-search:focus {
+    border-color: #b8c0c8;   /* ουδέτερο γκρι */
+}
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – FONT SIZE TUNING
+   ============================================================ */
+
+/* Text inside input (when typing) */
+.orchestrator-search {
+    font-size: 14px;        /* ⬅️ από ~13 → 14 */
+    line-height: 18px;
+}
+
+/* Floating label text */
+.orchestrator-status-label {
+    font-size: 13px;        /* ⬅️ από ~12 → 13 */
+    line-height: 17px;
+}
