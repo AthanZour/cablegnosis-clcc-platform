@@ -3,9 +3,12 @@
 ## Overview
 This section provides an overview of the first stable alpha release of the platform, focusing on the UI/UX layer and the stabilization of the core codebase.
 The transition from version 0.8.x to 1.0.1 marks the completion of the initial architectural foundation and interaction model.
+
 The current release is implemented as a modular Dash-based demonstration platform for power cable monitoring, synthetic data generation, and partner data integration.
 The application follows a production-oriented architectural logic, while remaining lightweight and demo-friendly.
+
 In the next phase of the project (M19+), the platform is planned to gradually transition to a modern React/JavaScript-based frontend, in alignment with current industry best practices for scalable and extensible UI development. This transition will enable the integration of more advanced interaction patterns, such as GUI-based drag-and-drop composition of views and workflows, dynamic component rendering, state-driven UI orchestration, and tighter coupling with real-time data and backend services.
+
 At the same time, the current Dash-based implementation will continue to play a complementary role, serving as a flexible environment for rapid prototyping, experimentation, and mock-up development. This dual approach is intended to preserve the platform’s adaptability and to support fast integration of emerging tools and concepts without compromising architectural consistency.
 
 ---
@@ -207,6 +210,7 @@ This structure enables:
 ## Next Steps
 
 Further refinement, feature expansion, and performance optimization will continue in subsequent releases.
+
 
 
 
