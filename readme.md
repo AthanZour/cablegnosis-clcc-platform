@@ -14,8 +14,8 @@ while remaining lightweight and demo-friendly.
 
 ## Project Structure
 
-```text
-.
+text
+
 ├── app.py
 ├── README.md
 ├── assets/
@@ -202,4 +202,5 @@ This structure enables:
 ---
 
 ## Next Steps
+
 Further refinement, feature expansion, and performance optimization will continue in subsequent releases.
