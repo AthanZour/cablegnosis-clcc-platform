@@ -14,22 +14,13 @@ while remaining lightweight and demo-friendly.
 
 ## Project Structure
 
-text
-
 ├── app.py
-
 ├── README.md
-
 ├── assets/
-
 ├── tabs/
-
 ├── tabs_core/
-
 ├── logic/
-
 ├── utils/
-
 └── data/
 
 ## High-Level Architecture
@@ -211,4 +202,5 @@ This structure enables:
 ## Next Steps
 
 Further refinement, feature expansion, and performance optimization will continue in subsequent releases.
+
 
