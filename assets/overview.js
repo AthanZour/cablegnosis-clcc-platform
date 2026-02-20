@@ -1,56 +1,80 @@
+// overview.js
+
+// ===================== CONFIG =====================
+// Change slide every X seconds (set 0 to disable auto-rotate)
+const HERO_ROTATE_SECONDS = 3;
+// ==================================================
+
 window.dash_clientside = Object.assign(
   {},
   window.dash_clientside,
   {
     overview: {
-      init: function (n) {
-        // βρίσκουμε όλα τα overview boxes (service-scoped)
-        const boxes = document.querySelectorAll("[id$='-box']");
+      init: function () {
+        console.log("[WP OVERVIEW] init called");
+
+        const boxes = document.querySelectorAll("[id$='-hero-image_wp_over']");
+        console.log("[WP OVERVIEW] boxes found:", boxes.length);
+
+        const intervalMs = Math.max(0, Number(HERO_ROTATE_SECONDS) || 0) * 1000;
 
         boxes.forEach((box) => {
-          // bind μόνο μία φορά
           if (box.dataset.bound === "true") return;
           box.dataset.bound = "true";
 
-          // derive service id
           const serviceId = box.id.replace("-box", "");
-          const cursorOut = document.getElementById(
-            `${serviceId}-cursor-position`
-          );
+          const cursorOut = document.getElementById(`${serviceId}-cursor`);
 
-          // local JS state (όπως παλιά)
-          let currentImage = 1;
+          const imagesAttr = box.getAttribute("data-images");
+          if (!imagesAttr) {
+            console.warn("[WP OVERVIEW] no data-images for", box.id);
+            return;
+          }
 
-          // mouse move → cursor tracking
+          const images = imagesAttr
+            .split("|")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          if (images.length < 2) return;
+
+          let currentImage = 0;
+
+          // ensure initial image
+          box.style.backgroundImage = `url("${images[0]}")`;
+
+          // OPTIONAL: stop existing timer if any (defensive)
+          if (box.dataset.timerId) {
+            try {
+              clearInterval(Number(box.dataset.timerId));
+            } catch (e) {}
+            delete box.dataset.timerId;
+          }
+
+          // AUTO-ROTATE
+          if (intervalMs > 0) {
+            const timerId = setInterval(() => {
+              currentImage = (currentImage + 1) % images.length;
+              box.style.backgroundImage = `url("${images[currentImage]}")`;
+            }, intervalMs);
+
+            // store timer id so we don't create duplicates
+            box.dataset.timerId = String(timerId);
+          }
+
+          // keep your existing handlers
           box.addEventListener("mousemove", (e) => {
-            const rect = box.getBoundingClientRect();
-            const x = Math.round(e.clientX - rect.left);
-            const y = Math.round(e.clientY - rect.top);
-
-            if (cursorOut) {
-              cursorOut.innerText = `cursor: x=${x}, y=${y}`;
-            }
+            if (!cursorOut) return;
+            // intentionally disabled
           });
 
-          // mouse down → image toggle (ίδιο behavior με πριν)
           box.addEventListener("mousedown", (e) => {
             if (e.button !== 0) return;
-
-            if (currentImage === 1) {
-              box.style.backgroundImage =
-                'url("/assets/subsea-cables-internet-ai-spooky-pooka-illustration.jpg")';
-              currentImage = 2;
-            } else {
-              box.style.backgroundImage =
-                'url("/assets/Undersea-Cables.jpeg")';
-              currentImage = 1;
-            }
+            currentImage = (currentImage + 1) % images.length;
+            box.style.backgroundImage = `url("${images[currentImage]}")`;
           });
 
-          // disable right-click
-          box.addEventListener("contextmenu", (e) =>
-            e.preventDefault()
-          );
+          box.addEventListener("contextmenu", (e) => e.preventDefault());
         });
 
         return "";

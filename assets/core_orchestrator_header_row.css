@@ -989,3 +989,51 @@
     font-size: 13px;        /* ⬅️ από ~12 → 13 */
     line-height: 17px;
 }
+
+
+/* ============================================================
+   ORCHESTRATOR SEARCH – RESULTS GROUPING (TOOLS / LINKS)
+   ------------------------------------------------------------
+   Adds visual structure for:
+   - "Tools" section (click -> tool-link navigation)
+   - "Links" section (anchor deep links)
+   Works alongside existing .orch-option styles.
+   ============================================================ */
+
+/* Section headers like "Tools", "Links" */
+.orch-group-title {
+    margin: 6px 0 4px 0;
+    padding: 2px 6px;
+
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+
+    color: #6b7280;           /* muted */
+}
+
+/* Tool hits (Divs) – reuse .orch-option base, add small cue */
+.orch-option.orch-option-tool {
+    font-weight: 500;
+    border-left: 3px solid #c3d2e6;  /* subtle technical cue */
+    padding-left: 10px;             /* compensate border */
+}
+
+/* Deep links (A tags) – make them look like options (not blue underlined links) */
+.orch-option.orch-option-link {
+    display: block;           /* full row clickable */
+    color: inherit;
+    text-decoration: none;
+    font-weight: 500;
+
+    border-left: 3px solid #d8dee4; /* slightly different cue vs tools */
+    padding-left: 10px;
+}
+
+/* Hover state stays consistent with .orch-option:hover */
+.orch-option.orch-option-link:hover {
+    text-decoration: none;
+}
+
+✅ Αυτό πατάει πάνω στα ήδη υπάρχο
