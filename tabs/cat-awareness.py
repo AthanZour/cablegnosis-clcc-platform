@@ -4,7 +4,7 @@ TAB_META = {
     "id": "cat-awareness",
     "label": "Cable System Awareness",
     "type": "category",
-    "order": 120,
+    "order": 102,
     "category": "Cable System Awareness",
     "version": "conceptual"
 }
@@ -16,9 +16,9 @@ def layout():
             html.H3("Cable System Awareness"),
 
             html.P(
-                "This category addresses system-level awareness, including "
-                "fault detection, pre-fault diagnostics, and situational awareness "
-                "of HVDC cable assets."
+                "This category addresses cable system awareness, including "
+                "pre-fault detection, alarming functionalities, and "
+                "operational preparedness of HVDC cable assets."
             ),
 
             html.Hr(),
@@ -27,7 +27,7 @@ def layout():
                 className="placeholder-box",
                 children=[
                     html.Img(
-                        src="/assets/cablegnosis_ring.png",
+                        src="/assets/awerness.jpg",
                         style={
                             "width": "70%",
                             "margin": "20px auto",
@@ -36,8 +36,9 @@ def layout():
                     ),
 
                     html.P(
-                        "Fault detection, pre-fault analysis, and system awareness "
-                        "tools will be accessible through this section.",
+                        "Pre-fault detection mechanisms, alarm generation, "
+                        "and system awareness tools will be accessible "
+                        "through this section.",
                         style={
                             "textAlign": "center",
                             "fontStyle": "italic"

@@ -1,6 +1,7 @@
 """Cable Components & Structure Tab — placeholder."""
 from dash import html
-
+from tabs_core.menu_layout import menu_layout
+from tabs_core.tab_menu_renderers import register_tab_menu_callbacks
 """
 HVDC Cable Structural & Material Context Tool
 
@@ -53,7 +54,7 @@ TAB_META = {
     "order": 245,
 
     # Γενικής χρήσης σε framework, feasibility και demo
-    "workpackages": ["WP1", "WP2", "WP3", "WP6"],
+    "workpackages": ["WP3"],
 
     # Καθαρό awareness tool
     "categories": [
@@ -69,12 +70,28 @@ TAB_META = {
     "status": "active",
 }
 
-def layout():
+TAB_PREFIX = "svc-cable-structure-context"
+
+TAB_MENU_META = {
+    "default": "overview",
+    "items": [
+        {"id": "overview", "label": "Overview"},
+        {"id": "kpis", "label": "KPIs"},
+        {"id": "realtime", "label": "Real-Time"},
+        {"id": "pmu", "label": "PMU"},
+    ],
+}
+
+def layout_content():
     return html.Div(
         "Placeholder for cable structure visualization.",
         style={"padding": "20px"},
     )
 
 
+def layout():
+    return menu_layout()
+
 def register_callbacks(app):
-    pass
+    # tab menu hide / show callbacks
+    register_tab_menu_callbacks(app, TAB_PREFIX)

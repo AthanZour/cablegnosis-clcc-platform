@@ -5,7 +5,7 @@ TAB_META = {
     "id": "wp5",
     "label": "WP5 – Technologies for the operational life and reliability of cable systems",
     "type": "workpackage",
-    "order": 3,
+    "order": 11,
     "wp": "WP5",
     "role": "System validation and lifecycle evaluation",
     "scope": "Validation of CABLEGNOSIS technologies and lifecycle performance assessment",

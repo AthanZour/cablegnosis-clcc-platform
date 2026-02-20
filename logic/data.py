@@ -27,16 +27,29 @@ def _synth_series(metric="Uptime", days=30, freq_per_day=24):
     return df[["timestamp", "value"]]
 
 
-def _indicator(value):
-    """Create an uptime KPI indicator figure."""
+def _indicator(
+    value,
+    title="Platform Uptime",
+    subtitle=None,
+    suffix=" %"
+):
+    """Create a KPI indicator figure (generic, semantic-aware)."""
+
+    title_text = (
+        f"{title}<br>"
+        f"<span style='font-size:12px;color:#666'>{subtitle}</span>"
+        if subtitle else title
+    )
+
     fig = go.Figure(
         go.Indicator(
             mode="number",
             value=value,
-            number={"suffix": " %"},
-            title={"text": "Platform Uptime"},
+            number={"suffix": suffix},
+            title={"text": title_text},
         )
     )
+
     fig.update_layout(margin=dict(l=6, r=6, t=30, b=6))
     return fig
 

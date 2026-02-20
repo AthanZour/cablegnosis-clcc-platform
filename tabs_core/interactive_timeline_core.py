@@ -15,7 +15,7 @@ Life Cycle Center visual identity.
 """
 
 import dash
-from dash import dcc, html, Input, Output, ctx
+from dash import dcc, html, Input, Output, State, ctx  # <-- add State here
 import plotly.graph_objects as go
 from pathlib import Path
 from logic.synthetic_dataset_generator import generate_synthetic_dataset
@@ -80,7 +80,7 @@ def get_tab():
         children=[
             html.Div(
                 [
-                    html.H3("CABLEGNOSIS Data Timeline"),
+                    html.H3("HVDC (Indicative) Timeline"),
                     html.P(
                         "Visualize and explore synthetic time-series data representing cable monitoring signals.",
                         style={"marginBottom": "15px", "color": "#444"},
@@ -196,44 +196,54 @@ def get_tab():
 def register_callbacks(app: dash.Dash):
     """Register callbacks for the interactive timeline tab."""
 
-    # 1) Build / update timeline
     @app.callback(
         Output("it-timeline", "figure"),
         Input("it-generate-btn", "n_clicks"),
         Input("it-auto", "value"),
         Input("it-chart-type", "value"),
         Input("it-timescale", "value"),
+        State("it-timeline", "figure"),   # <-- add this
     )
-    def build_timeline(n_clicks, auto_val, chart_type, timescale):
+    def build_timeline(n_clicks, auto_val, chart_type, timescale, current_fig):
         auto = auto_val and "auto" in auto_val
         triggered_id = ctx.triggered_id
-
+    
+        # --- NEW: initial load only generates if the graph is empty ---
+        if triggered_id is None:
+            has_data = bool(current_fig and current_fig.get("data"))
+            if has_data:
+                raise dash.exceptions.PreventUpdate
+            # else: fall through and generate once
+    
+        # keep existing behaviour: only react to allowed triggers unless auto is enabled
         if not auto and triggered_id not in (
+            None,  # <-- allow initial render to pass the guard
             "it-generate-btn",
             "it-chart-type",
             "it-timescale",
         ):
             raise dash.exceptions.PreventUpdate
-
+    
         df = _generate_df()
         days = TIMESCALES.get(timescale)
         if days:
             df = df.tail(days)
-
-        # Chart selection
+    
         if chart_type == "line":
             trace = go.Scatter(
                 x=df["timestamp"],
                 y=df["value"],
-                mode="lines",
+                mode="lines+markers",
+                marker=dict(size=6, opacity=0.15),
                 hovertemplate="%{x|%d %b %Y}<br><b>%{y}</b> units<extra></extra>",
             )
         elif chart_type == "area":
             trace = go.Scatter(
                 x=df["timestamp"],
                 y=df["value"],
-                mode="lines",
+                mode="lines+markers",
                 fill="tozeroy",
+                marker=dict(size=6, opacity=0.10),
                 hovertemplate="%{x|%d %b %Y}<br><b>%{y}</b> units<extra></extra>",
             )
         else:
@@ -242,7 +252,7 @@ def register_callbacks(app: dash.Dash):
                 y=df["value"],
                 hovertemplate="%{x|%d %b %Y}<br><b>%{y}</b> units<extra></extra>",
             )
-
+    
         fig = go.Figure(trace)
         fig.update_layout(
             dragmode="select",

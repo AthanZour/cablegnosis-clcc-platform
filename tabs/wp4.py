@@ -5,7 +5,7 @@ TAB_META = {
     "id": "wp4",
     "label": "WP4 –  Technologies for the development of innovative cable systems",
     "type": "workpackage",
-    "order": 4,
+    "order": 12,
     "wp": "WP4",
     "role": "Condition monitoring and diagnostics",
     "scope": "Monitoring, diagnostics, analytics and AI-based tools for cable systems",

@@ -4,7 +4,7 @@ TAB_META = {
     "id": "cat-human",
     "label": "Human Engagement",
     "type": "category",
-    "order": 130,
+    "order": 103,
     "category": "Human Engagement",
     "version": "conceptual"
 }
@@ -17,8 +17,8 @@ def layout():
 
             html.P(
                 "This category focuses on human-in-the-loop interaction, "
-                "including alerts, notifications, decision support, and "
-                "operator engagement mechanisms."
+                "including predictive maintenance support, fault location accuracy, "
+                "repair activities, and cable ageing assessment."
             ),
 
             html.Hr(),
@@ -27,7 +27,7 @@ def layout():
                 className="placeholder-box",
                 children=[
                     html.Img(
-                        src="/assets/hvdc_cable.jpg",
+                        src="/assets/human_engagement.jpeg",
                         style={
                             "width": "60%",
                             "margin": "20px auto",
@@ -36,8 +36,9 @@ def layout():
                     ),
 
                     html.P(
-                        "Alerting, reminders, task management, and human-centric "
-                        "interfaces will be integrated here.",
+                        "Alerts, notifications, and decision-support information "
+                        "will be presented to operators through human-centric "
+                        "interfaces.",
                         style={
                             "textAlign": "center",
                             "fontStyle": "italic"

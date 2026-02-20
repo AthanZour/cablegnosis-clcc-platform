@@ -12,53 +12,33 @@ from dash import html, dcc, Input, Output, State, no_update
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from utils.paths import PARTNER_DATA_DIR
+from tabs_core.menu_layout import menu_layout
+from tabs_core.tab_menu_renderers import register_tab_menu_callbacks
 
 """
-HVDC Data Utilization & Validation Analytics Tool
+HVDC Data Utilization & Validation Analytics (Demo / Review-Safe)
 
-Purpose:
-This service provides an analytical and exploratory environment for assessing
-how heterogeneous HVDC-related datasets (e.g. PMU, SCADA, laboratory and
-partner-provided data) are integrated, utilized, and validated within the
-CABLEGNOSIS platform.
+What this tool is (today):
+- A lightweight, review-facing analytics playground that visualises *indicative* dataset integration
+  and *demo* metrics using synthetic / placeholder streams.
+- It is meant to show how the platform will expose data-integration visibility and “readiness cues”
+  before deeper monitoring / diagnostics tools are opened.
 
-The tool combines:
-- Data utilization and integration analytics (KPIs, comparisons, Sankey-style
-  data flow visualizations), and
-- Data relevance and validation views, supporting assessment of data readiness
-  for monitoring, diagnostics, and analytics workflows.
+What this tool is NOT (today):
+- It does NOT certify validation outcomes, does NOT provide pass/fail verdicts,
+  and does NOT claim that pilot validation procedures have been executed (WP6 execution starts later).
 
-Role in the project:
-The service bridges Work Package development and the CABLEGNOSIS platform by
-making project-driven datasets and integration pipelines visible, measurable,
-and reviewable. It directly supports WP4 activities related to data integration
-and monitoring foundations, as well as WP5 validation and WP6 demonstration
-activities (e.g. M18/M30 reviews).
+How to interpret the views:
+- Pie / Sankey / correlation blocks are demonstrators of “what will be measured and inspected”
+  as partner/pilot datasets mature, rather than a completed validation workflow.
 
-Note:
-This service intentionally combines utilization and validation aspects.
-These may be separated into distinct tools in later project phases.
+Why it is useful for M18:
+- Shows a coherent *evidence navigation concept* for data integration: “what data exists, how it flows,
+  and which cues will later support validation packaging” (without asserting final results).
 """
+
 # ---------------------------------------------------------------------
 # SERVICE METADATA OPTIONS
-#
-# Possible Work Packages:
-#   - WP1 – Requirements & System Framework
-#   - WP2 – Advanced Cable Materials & Technologies
-#   - WP3 – Superconducting Cable Design & Feasibility
-#   - WP4 – Monitoring & Diagnostics
-#   - WP5 – Validation, Deployment & Lifecycle Assessment
-#   - WP6 – Demonstration & Replicability
-#   - WP7 – Dissemination, Exploitation & Impact
-#
-# Possible Categories:
-#   - Monitoring & Analytics
-#   - Cable Performance & Optimization
-#   - Cable System Awareness
-#   - Human Engagement
-#
-# Functions:
-#   - (not defined yet – leave empty)
 # ---------------------------------------------------------------------
 
 TAB_META = {
@@ -67,7 +47,7 @@ TAB_META = {
     "type": "service",
 
     # Keep close to other analytics services
-    "order": 225,
+    "order": 201,
 
     # Originates in monitoring tasks, used for validation and demos
     "workpackages": ["WP4", "WP5", "WP6"],
@@ -81,9 +61,6 @@ TAB_META = {
 
     # Not structured yet
     "subcategories": [],
-
-    # Future extension point
-    # "functions": [],
 
     "version": "v0.1 (demo)",
     "status": "active"
@@ -111,6 +88,17 @@ CABLE_METRICS = [
     ("volume_resistivity_ohm_cm", "Volume resistivity (Ω·cm)"),
 ]
 
+TAB_PREFIX = "svc-hvdc-data-utilization-validation"
+
+TAB_MENU_META = {
+    "default": "overview",
+    "items": [
+        {"id": "overview", "label": "Overview"},
+        {"id": "kpis", "label": "KPIs"},
+        {"id": "realtime", "label": "Real-Time"},
+        {"id": "pmu", "label": "PMU"},
+    ],
+}
 
 def _metric_keys() -> list[str]:
     return [k for k, _ in CABLE_METRICS]
@@ -146,6 +134,7 @@ def _get_tz_display() -> str:
         tz_code = "Local"
 
     return f"{offset} ({season} | {tz_code})"
+
 
 def _csv_path(idx: int) -> Path:
     return PARTNER_DATA_DIR / f"{CSV_PREFIX}.{idx}.csv"
@@ -214,27 +203,23 @@ def _generate_dummy_frame(n: int) -> pd.DataFrame:
     """
     rng = np.random.default_rng()
 
-    insulation_thickness = rng.normal(25, 4, n).clip(12, 40)  # mm (e.g., HVDC ~20-30mm typical bands)
-    layers = rng.integers(3, 8, n)  # integer layers
+    insulation_thickness = rng.normal(25, 4, n).clip(12, 40)
+    layers = rng.integers(3, 8, n)
 
-    # XLPE relative permittivity around ~2.4 (varies slightly)
     epsr = rng.normal(2.4, 0.12, n).clip(2.0, 3.0)
 
-    # dielectric strength kV/mm: loosely around 25-40 for XLPE-type insulation
     diel_strength = (rng.normal(32, 4, n) + (epsr - 2.4) * (-6)).clip(18, 45)
 
-    # tan delta: very small; we keep it small but allow some outliers
     tan_delta = np.abs(rng.normal(3e-4, 2e-4, n)).clip(5e-5, 3e-3)
 
-    # volume resistivity: huge range; use log-normal
-    log_rho = rng.normal(16.5, 0.7, n)  # 10^16-ish order
+    log_rho = rng.normal(16.5, 0.7, n)
     rho = (10 ** log_rho).clip(1e12, 1e19)
 
     df = pd.DataFrame(
         {
             "timestamp": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")] * n,
             "insulation_thickness_mm": insulation_thickness,
-            "insulation_layers": layers.astype(float),  # keep numeric for corr
+            "insulation_layers": layers.astype(float),
             "relative_permittivity_epsr": epsr,
             "dielectric_strength_kv_per_mm": diel_strength,
             "tan_delta": tan_delta,
@@ -271,7 +256,6 @@ def _read_last_files(n_files: int = 2) -> pd.DataFrame:
         return pd.DataFrame(columns=["timestamp"] + _metric_keys())
 
     df_all = pd.concat(frames, ignore_index=True)
-    # clean: keep only numeric columns for corr (and drop nulls)
     for k in _metric_keys():
         df_all[k] = pd.to_numeric(df_all.get(k, np.nan), errors="coerce")
     df_all = df_all.dropna(subset=_metric_keys(), how="any")
@@ -299,7 +283,7 @@ def _make_pie_fig(seed: int | None = None) -> go.Figure:
     fig.update_layout(
         margin=dict(l=20, r=20, t=40, b=20),
         height=320,
-        title="Protocol Share (Demo)",
+        title="Integration Protocol Mix (Demo)",
     )
     return fig
 
@@ -307,23 +291,21 @@ def _make_pie_fig(seed: int | None = None) -> go.Figure:
 def _make_sankey_fig(seed: int | None = None) -> go.Figure:
     rng = np.random.default_rng(seed)
 
-    # Dummy "Partner Data Flow" - consistent with this tab
     nodes = [
-        "Devices",
-        "Edge Gateway",
-        "Partner API",
-        "Data Lake",
-        "Analytics",
-        "Dashboard",
+        "Devices (demo)",
+        "Edge Gateway (demo)",
+        "Partner API (demo)",
+        "Data Lake (demo)",
+        "Analytics (demo)",
+        "Dashboard (demo)",
     ]
-    # links: source->target with values
     links = [
         (0, 1, int(rng.integers(20, 60))),
         (1, 2, int(rng.integers(10, 50))),
         (2, 3, int(rng.integers(10, 50))),
         (3, 4, int(rng.integers(10, 50))),
         (4, 5, int(rng.integers(10, 50))),
-        (1, 5, int(rng.integers(5, 20))),  # bypass demo
+        (1, 5, int(rng.integers(5, 20))),
     ]
     fig = go.Figure(
         data=[
@@ -344,16 +326,14 @@ def _make_sankey_fig(seed: int | None = None) -> go.Figure:
     fig.update_layout(
         margin=dict(l=20, r=20, t=40, b=20),
         height=320,
-        title="Partner Data Flow (Demo)",
+        title="Data Integration Path (Demo)",
     )
     return fig
 
 
 def _make_corr_heatmap(df: pd.DataFrame, order: list[str]) -> go.Figure:
-    # correlation only on selected metric columns
     cols = [c for c in order if c in df.columns]
     if len(cols) < 2 or df.empty:
-        # return empty-ish fig
         fig = go.Figure()
         fig.update_layout(
             height=420,
@@ -364,7 +344,6 @@ def _make_corr_heatmap(df: pd.DataFrame, order: list[str]) -> go.Figure:
 
     corr = df[cols].corr(method="pearson")
 
-    # heatmap without text labels (hover shows value)
     fig = go.Figure(
         data=go.Heatmap(
             z=corr.values,
@@ -400,17 +379,50 @@ def _dropdown_options(disable_key: str | None = None) -> list[dict]:
 # -----------------------------
 # Layout
 # -----------------------------
-def layout():
+def layout_content():
     tz = _get_tz_display()
 
     return html.Div(
-        className="partner-tab",
+        className="partner-tab hvdc-duv-tab",
         children=[
             html.Div(
                 style={"display": "flex", "alignItems": "center", "justifyContent": "space-between"},
                 children=[
-                    html.H3("Partner Data Integration", className="tab-title"),
+                    html.H3("HVDC Data Integration & Utilization (Demo)", className="tab-title"),
                     dbc.Badge(f"Timezone: {tz}", color="info", pill=True, style={"fontSize": "0.95rem"}),
+                ],
+            ),
+
+            # Optional visual placeholder (review-safe) — purely descriptive
+            html.Div(
+                className="hvdc-duv-hero",
+                children=[
+                    html.Div(
+                        className="hvdc-duv-hero-img",
+                        style={
+                            "backgroundImage": "url('/assets/tabs_hero_images/svc_hvdc_data_utilization_validation_hero_image.jpg')",
+                            "backgroundSize": "cover",
+                            "backgroundPosition": "center",
+                            "backgroundRepeat": "no-repeat",
+                        },
+                    ),
+                    html.Div(
+                        className="hvdc-duv-hero-txt",
+                        children=[
+                            html.H4("What you see here (M18-ready framing)"),
+                            html.Ul(
+                                [
+                                    html.Li("An indicative view of how partner/pilot datasets will be exposed and inspected."),
+                                    html.Li("Demo visuals showing integration visibility (not a completed validation workflow)."),
+                                    html.Li("Future extensions: richer evidence markers and cross-tool hand-offs as pilots mature."),
+                                ]
+                            ),
+                            html.P(
+                                "Note: Values and flows shown below are demonstrators (synthetic/placeholder) to communicate intended capabilities without claiming pass/fail validation outcomes.",
+                                className="hvdc-duv-note",
+                            ),
+                        ],
+                    ),
                 ],
             ),
 
@@ -425,8 +437,8 @@ def layout():
                                     html.Div(
                                         style={"display": "flex", "justifyContent": "space-between", "alignItems": "center"},
                                         children=[
-                                            html.Span("Partner Telemetry Snapshot"),
-                                            dbc.Button("Refresh", id="partner-refresh-btn", n_clicks=0, color="primary", size="sm"),
+                                            html.Span("Integration Snapshot (Demo)"),
+                                            dbc.Button("Refresh (demo)", id="partner-refresh-btn", n_clicks=0, color="primary", size="sm"),
                                         ],
                                     ),
                                     style={"background": "#eef6ff"},
@@ -446,7 +458,7 @@ def layout():
                     dbc.Col(
                         dbc.Card(
                             [
-                                dbc.CardHeader("Integration Path (Dummy)", style={"background": "#fff3e6"}),
+                                dbc.CardHeader("Integration Path (Demo)", style={"background": "#fff3e6"}),
                                 dbc.CardBody(
                                     dcc.Graph(
                                         id="partner-sankey",
@@ -462,31 +474,29 @@ def layout():
                 ],
             ),
 
-            # Existing blocks (kept conceptually similar, but NO route buttons)
             html.Div(
                 className="partner-controls",
                 children=[
                     html.Div(
                         [
                             html.Img(src="/assets/iot_device.png", className="partner-icon"),
-                            html.H4("Devices & Protocols"),
+                            html.H4("Devices & Interfaces (Demo)"),
                         ]
                     ),
                     html.Div(
                         [
-                            html.Label("Select Device:"),
+                            html.Label("Select Device (placeholder):"),
                             dcc.Dropdown(
                                 id="device-dropdown",
                                 options=[
-                                    {"label": "UCY Thermal Node", "value": "UCY-001"},
-                                    {"label": "UoS Strain Sensor", "value": "UOS-002"},
-                                    {"label": "IWO Magnetic Probe", "value": "IWO-003"},
+                                    {"label": "UCY Thermal Node (demo)", "value": "UCY-001"},
+                                    {"label": "UoS Strain Sensor (demo)", "value": "UOS-002"},
+                                    {"label": "IWO Magnetic Probe (demo)", "value": "IWO-003"},
                                 ],
                                 value="UCY-001",
                                 className="device-dropdown",
                             ),
-                            # Keep UI simple: no routes / no popups
-                            html.Button("↻ Refresh Details", id="device-refresh-btn", n_clicks=0, className="action-button"),
+                            html.Button("↻ Refresh (demo)", id="device-refresh-btn", n_clicks=0, className="action-button"),
                         ]
                     ),
                 ],
@@ -496,8 +506,8 @@ def layout():
                 id="device-info",
                 className="device-info",
                 children=[
-                    html.H4("Device Information"),
-                    html.P("Select a device and click refresh to view details (dummy)."),
+                    html.H4("Device Information (Demo)"),
+                    html.P("Select a device and click refresh to view placeholder details."),
                 ],
             ),
 
@@ -505,19 +515,18 @@ def layout():
                 id="system-summary",
                 className="system-summary",
                 children=[
-                    html.H4("System Summary"),
+                    html.H4("Summary (Demo)"),
                     html.Ul(
                         [
-                            html.Li("Active Devices: 3"),
-                            html.Li("Total Alerts: 0"),
-                            html.Li("Supported Protocols: MQTT / REST / OPC UA"),
-                            html.Li("Last Update: Jan 2026"),
+                            html.Li("Active devices shown: 3 (placeholder)"),
+                            html.Li("Alerts shown: 0 (placeholder)"),
+                            html.Li("Interfaces: MQTT / REST / OPC UA (demo)"),
+                            html.Li("Purpose: integration visibility for review (not validation verdicts)"),
                         ]
                     ),
                 ],
             ),
 
-            # Correlation tool
             dbc.Card(
                 className="mt-3",
                 style={"borderRadius": "10px"},
@@ -565,8 +574,8 @@ def layout():
                                             html.Label("\u00A0"),
                                             html.Div(
                                                 [
-                                                    dbc.Button("Show", id="corr-show-btn", n_clicks=0, color="success", className="me-2"),
-                                                    dbc.Button("Refresh Data", id="corr-refresh-btn", n_clicks=0, color="warning"),
+                                                    dbc.Button("Show (demo)", id="corr-show-btn", n_clicks=0, color="success", className="me-2"),
+                                                    dbc.Button("Refresh Data (demo)", id="corr-refresh-btn", n_clicks=0, color="warning"),
                                                 ]
                                             ),
                                         ],
@@ -584,25 +593,27 @@ def layout():
                             html.Div(
                                 id="corr-footnote",
                                 style={"fontSize": "0.9rem", "opacity": 0.8},
-                                children="Tip: choose two metrics; the same metric is disabled in the other dropdown.",
+                                children="Tip: choose two metrics; the same metric is disabled in the other dropdown (demo behaviour).",
                             ),
                         ]
                     ),
                 ],
             ),
 
-            # Stores
             dcc.Store(id="partner-data-store"),
             dcc.Store(id="corr-data-seed-store"),
         ],
     )
 
 
+def layout():
+    return menu_layout()
+
+
 # -----------------------------
 # Callbacks
 # -----------------------------
 def register_callbacks(app):
-    # Refresh pie + sankey (NO routes)
     @app.callback(
         Output("partner-pie", "figure"),
         Output("partner-sankey", "figure"),
@@ -613,7 +624,6 @@ def register_callbacks(app):
         seed = int(n or 0) + 1
         return _make_pie_fig(seed=seed), _make_sankey_fig(seed=seed)
 
-    # Dummy device info refresh
     @app.callback(
         Output("device-info", "children"),
         Input("device-refresh-btn", "n_clicks"),
@@ -624,7 +634,7 @@ def register_callbacks(app):
         device_id = device_id or "UCY-001"
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return [
-            html.H4("Device Information"),
+            html.H4("Device Information (Demo)"),
             html.Ul(
                 [
                     html.Li(f"Device ID: {device_id}"),
@@ -635,7 +645,6 @@ def register_callbacks(app):
             ),
         ]
 
-    # Grey-out logic: when A changes, disable same value in B options
     @app.callback(
         Output("corr-metric-b", "options"),
         Input("corr-metric-a", "value"),
@@ -643,7 +652,6 @@ def register_callbacks(app):
     def disable_in_b(metric_a):
         return _dropdown_options(disable_key=metric_a)
 
-    # And vice versa: when B changes, disable same in A options
     @app.callback(
         Output("corr-metric-a", "options"),
         Input("corr-metric-b", "value"),
@@ -651,7 +659,6 @@ def register_callbacks(app):
     def disable_in_a(metric_b):
         return _dropdown_options(disable_key=metric_b)
 
-    # Refresh data: rotate files / generate new dummy CSV chunk
     @app.callback(
         Output("corr-data-seed-store", "data"),
         Input("corr-refresh-btn", "n_clicks"),
@@ -659,8 +666,6 @@ def register_callbacks(app):
     )
     def refresh_corr_data(_):
         _rotate_files_if_needed(max_rows_per_file=100)
-        # Append a new chunk to the latest file to simulate "fresh" partner dataset
-        # Find latest file index; if none, rotation created it.
         paths = sorted(DATA_DIR.glob(f"{CSV_PREFIX}.*.csv"))
         if not paths:
             return {"ok": True, "ts": datetime.now().isoformat()}
@@ -676,7 +681,6 @@ def register_callbacks(app):
         df_new.to_csv(latest, mode="a", header=False, index=False)
         return {"ok": True, "ts": datetime.now().isoformat()}
 
-    # Show correlation heatmap
     @app.callback(
         Output("corr-heatmap", "figure"),
         Input("corr-show-btn", "n_clicks"),
@@ -686,21 +690,20 @@ def register_callbacks(app):
         prevent_initial_call=False,
     )
     def show_corr(n, metric_a, metric_b, _seed_state):
-        # Always ensure we have some data
         _rotate_files_if_needed(max_rows_per_file=100)
 
         df_all = _read_last_files(n_files=2)
 
-        # If still empty, generate one file and re-read
         if df_all.empty:
             df = _generate_dummy_frame(ROWS_PER_FILE)
             df.to_csv(_csv_path(1), index=False)
             df_all = _read_last_files(n_files=2)
 
-        # Build order: selected A, selected B, then the rest
         all_keys = _metric_keys()
         metric_a = metric_a or all_keys[0]
         metric_b = metric_b or all_keys[1]
         order = [metric_a, metric_b] + [k for k in all_keys if k not in (metric_a, metric_b)]
 
         return _make_corr_heatmap(df_all, order=order)
+
+    register_tab_menu_callbacks(app, TAB_PREFIX)

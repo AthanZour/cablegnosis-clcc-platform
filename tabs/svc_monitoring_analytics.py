@@ -1,5 +1,3 @@
-from dash import html
-
 """
 HVDC Telemetry Validation & Analytics Tool (Service Tab)
 
@@ -17,6 +15,10 @@ Data & Requirements context:
 - Analytics outputs are mapped to project use cases and validation
   requirements as defined in UC–Req mapping documents.
 """
+
+from dash import html
+from tabs_core.menu_layout import menu_layout
+from tabs_core.tab_menu_renderers import register_tab_menu_callbacks
 
 # ---------------------------------------------------------------------
 # SERVICE METADATA OPTIONS
@@ -48,7 +50,7 @@ TAB_META = {
     "label": "HVDC Telemetry Validation & Analytics",
 
     "type": "service",
-    "order": 205,
+    "order": 250,
 
     # Developed in WP4, heavily used in WP5 validation,
     # and potentially reused in demonstrations.
@@ -69,7 +71,20 @@ TAB_META = {
     "version": "v0.1 (demo)",
     "status": "active"
 }
-def layout():
+
+TAB_PREFIX = "svc-hvdc-telemetry-analytics"
+
+TAB_MENU_META = {
+    "default": "overview",
+    "items": [
+        {"id": "overview", "label": "Overview"},
+        {"id": "kpis", "label": "KPIs"},
+        {"id": "realtime", "label": "Real-Time"},
+        {"id": "pmu", "label": "PMU"},
+    ],
+}
+
+def layout_content():
     return html.Div(
         className="tab-page",
         children=[
@@ -104,3 +119,10 @@ def layout():
             )
         ]
     )
+    
+def layout():
+    return menu_layout()
+
+def register_callbacks(app):
+    # tab menu hide / show callbacks
+    register_tab_menu_callbacks(app, TAB_PREFIX)

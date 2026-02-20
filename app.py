@@ -178,7 +178,7 @@ import tabs
 
 METADATA_DIR = "data/metadata"
 
-PLATFORM_VERSION = "0.8.3.11-demo"
+PLATFORM_VERSION = "1.1.0-aplha(D4.5a)"
 
 PY_VERSION = sys.version.split()[0]
 DASH_VERSION = dash.__version__
@@ -214,10 +214,69 @@ def discover_tabs():
 
 TAB_MODULES = discover_tabs()
 
+def resolve_tool_id(target: str):
+    """
+    Resolve a navigation target to a tool id.
+    - Accepts either exact TAB_META["id"] or TAB_META["label"] (case-insensitive).
+    - Returns None if not found.
+    """
+    if not target:
+        return None
+
+    # 1) direct id match
+    if target in TOOL_ID_TO_META:
+        return target
+
+    # 2) label match (case-insensitive)
+    key = str(target).strip().lower()
+    return TOOL_LABEL_TO_ID.get(key)
+
+
+def choose_wp_for_tool(tool_id: str, fallback_wp_tab_id: str = None):
+    """
+    Choose a WP tab that contains this tool, so the tool becomes visible in the WP tool-bar.
+    - If tool declares workpackages, picks the first WP that exists in the UI.
+    - If none match, falls back to current selected WP (fallback_wp_tab_id).
+    """
+    meta = TOOL_ID_TO_META.get(tool_id) or {}
+    wps = meta.get("workpackages", []) or []
+    for wp_code in wps:
+        wp_tab_id = WP_CODE_TO_WP_TAB_ID.get(wp_code)
+        if wp_tab_id:
+            return wp_tab_id
+    return fallback_wp_tab_id
+
 print("Discovered tabs:")
 for t in TAB_MODULES:
     print(" -", t.__name__, t.TAB_META)
 
+# def choose_wp_for_tool(tool_id: str, fallback_wp_tab_id: str = None):
+#     """
+#     Choose a WP tab that contains this tool, so the tool becomes visible in the WP tool-bar.
+
+#     Preference rule:
+#     1) If the CURRENT WP (fallback_wp_tab_id) is one of the tool's declared workpackages,
+#        stay there (prevents jumping to another WP like WP4 when already in WP5).
+#     2) Otherwise, pick the first WP from tool meta that exists in the UI.
+#     3) Otherwise, fall back to fallback_wp_tab_id (no-op-ish).
+#     """
+#     meta = TOOL_ID_TO_META.get(tool_id) or {}
+#     wps = meta.get("workpackages", []) or []
+
+#     # 1) Prefer current WP if valid for this tool
+#     if fallback_wp_tab_id:
+#         current_wp_code = wp_code_from_wp_tab_id(fallback_wp_tab_id)
+#         if current_wp_code in wps:
+#             return fallback_wp_tab_id
+
+#     # 2) Otherwise pick first available WP from meta
+#     for wp_code in wps:
+#         wp_tab_id = WP_CODE_TO_WP_TAB_ID.get(wp_code)
+#         if wp_tab_id:
+#             return wp_tab_id
+
+#     # 3) Final fallback
+#     return fallback_wp_tab_id
 
 # ============================================================
 # OPTIONAL META REGISTRIES (SAFE IMPORTS)
@@ -378,7 +437,202 @@ def services_for_category(category_name: str):
             services.append(m)
     services.sort(key=lambda x: x.TAB_META.get("order", 999))
     return services
-    
+
+# ------------------------------------------------------------------
+# Tool-link navigation helper (scope-aware)
+#
+# Why this exists:
+# - When the user clicks a "Open tool →" hyperlink inside an overview page, we want
+#   to navigate to the tool in a way that respects the CURRENT orchestrator scope.
+# - Without this check, the resolver may jump to a different WP/category just because
+#   the tool is ALSO declared there (e.g. tool has workpackages ["WP4","WP5"] and we
+#   always pick the first one).
+#
+# What it does:
+# - Answers a single question: "Is this tool already visible/available in the current
+#   navigation scope?"
+#   • mode == "per_wp"  -> check against the tool list that is rendered for selected_wp
+#   • mode == "per_cat" -> check against the tool list that is rendered for selected_category
+#
+# How it is used:
+# - In the tool-link click handler:
+#   1) If the tool is visible in the current scope -> stay in the same WP/category and
+#      just select the tool.
+#   2) Otherwise -> fallback to the existing resolver logic (switch WP/category to one
+#      that contains the tool).
+#
+# Design constraints:
+# - Must be SAFE: never crash the app due to missing folders, missing resolvers, or
+#   transient errors. Always returns False on uncertainty.
+# - Deterministic: uses the same "services_for_*" builders as the orchestrator, so
+#   visibility matches what the UI would actually show.
+# ------------------------------------------------------------------
+
+def tool_is_visible_in_scope(
+    tool_id: str,
+    mode: str,
+    selected_wp: str | None,
+    selected_category: str | None,
+) -> bool:
+    """
+    Returns True if `tool_id` belongs to the *currently active* navigation scope.
+
+    - per_wp: checks the tool list that is rendered for `selected_wp`
+    - per_category: checks the tool list that is rendered for `selected_category`
+
+    Safe: never raises, returns False on unknown mode / missing data.
+    """
+    if not tool_id:
+        return False
+
+    try:
+        if mode == "per_wp":
+            effective_wp = selected_wp or default_wp_id()
+            if not effective_wp:
+                return False
+
+            wp_code = wp_code_from_wp_tab_id(effective_wp)
+            if not wp_code:
+                return False
+
+            tools = services_for_wp(wp_code)
+            return any(t.TAB_META.get("id") == tool_id for t in tools)
+
+        if mode in ("per_category", "per_cat"):
+            effective_category = selected_category or default_category_id()
+            if not effective_category:
+                return False
+
+            cat_label = category_label_from_tab_id(effective_category)
+            if not cat_label:
+                return False
+
+            tools = services_for_category(cat_label)
+            return any(t.TAB_META.get("id") == tool_id for t in tools)
+
+    except Exception:
+        return False
+
+    return False
+
+# ============================================================
+# TOOL NAVIGATION REGISTRY (SAFE, META-DRIVEN)
+# ============================================================
+
+# Build lookups once at startup (no hardcoding, uses TAB_META already loaded)
+TOOL_ID_TO_META = {}
+TOOL_LABEL_TO_ID = {}
+WP_CODE_TO_WP_TAB_ID = {}
+
+# Index WP tabs: WP code -> wp tab id
+for wp in get_wp_tabs():
+    wp_tab_id = wp.TAB_META["id"]
+    wp_code = wp_code_from_wp_tab_id(wp_tab_id)
+    if wp_code:
+        WP_CODE_TO_WP_TAB_ID[wp_code] = wp_tab_id
+
+# Index service/tool tabs: id -> meta, label -> id
+for tool in get_service_tabs():
+    meta = tool.TAB_META or {}
+    tid = meta.get("id")
+    lbl = (meta.get("label") or "").strip()
+    if tid:
+        TOOL_ID_TO_META[tid] = meta
+    if lbl:
+        TOOL_LABEL_TO_ID[lbl.lower()] = tid
+
+from tabs_core.tool_registry import set_tool_meta
+set_tool_meta(TOOL_ID_TO_META)
+
+
+# -----------------------------------------------------------------------------
+# Tool Search Index (Orchestrator)
+# -----------------------------------------------------------------------------
+# Purpose:
+#   Extend the orchestrator search so it can return "Tool" results in addition
+#   to the existing per-category / per-workpackage options.
+#
+# How it works:
+#   - We build a searchable "blob" per tool using:
+#       * tool_id (TAB_META["id"])
+#       * label   (TAB_META["label"])
+#       * tags    (optional TAB_META["tags"])
+#   - The orchestrator search query is tokenized (split by whitespace).
+#   - We apply an "AND" match: every query token must exist somewhere in the blob.
+#
+# Tags:
+#   Tags are OPTIONAL. Search must work even if tags are missing.
+#   When tags are present, they improve discoverability (synonyms, domains, etc.).
+#
+# Recommended TAB_META tag formats:
+#   1) List of strings (preferred):
+#       TAB_META = {
+#           "id": "svc-hvdc-anomaly-detection",
+#           "label": "HVDC Anomaly Detection & Event Classification",
+#           "tags": ["hvdc", "anomaly", "event classification", "scada", "monitoring"]
+#       }
+#
+#   2) Single string (also supported; will be treated as a single tag):
+#       TAB_META = {
+#           "id": "svc-hvdc-anomaly-detection",
+#           "label": "HVDC Anomaly Detection & Event Classification",
+#           "tags": "hvdc"
+#       }
+#
+# Notes:
+#   - Matching is case-insensitive.
+#   - Keep tags short, human-friendly, and include common synonyms users might type.
+#   - Later we can add scoring (exact label match > tag match > id match) if needed.
+# -----------------------------------------------------------------------------
+
+
+def _normalize_tokens(s: str) -> list[str]:
+    s = (s or "").strip().lower()
+    return [t for t in s.split() if t]
+
+def _tool_search_text(meta: dict, tool_id: str) -> str:
+    label = (meta.get("label") or "").strip()
+    tags = meta.get("tags") or []
+    if isinstance(tags, str):
+        tags = [tags]
+    tags = [str(t).strip() for t in tags if str(t).strip()]
+    # searchable blob
+    return " ".join([tool_id, label, *tags]).lower()
+
+def search_tools(query: str, limit: int = 8) -> list[dict]:
+    q_tokens = _normalize_tokens(query)
+    if not q_tokens:
+        return []
+
+    hits = []
+    for tool_id, meta in TOOL_ID_TO_META.items():
+        blob = _tool_search_text(meta, tool_id)
+        # “AND” match: όλα τα tokens να υπάρχουν κάπου
+        if all(t in blob for t in q_tokens):
+            hits.append({
+                "tool_id": tool_id,
+                "label": (meta.get("label") or tool_id).strip(),
+                "tags": meta.get("tags") or [],
+            })
+
+    # απλό sort: πιο μικρό label πρώτα (ή βάλε scoring αργότερα)
+    hits.sort(key=lambda x: (len(x["label"]), x["label"].lower()))
+    return hits[:limit]
+
+def choose_category_tab_for_tool(tool_id: str, fallback_cat_tab_id: str = None):
+    meta = TOOL_ID_TO_META.get(tool_id) or {}
+    cats = meta.get("categories", []) or []
+    if not cats:
+        return fallback_cat_tab_id
+
+    target_cat_name = cats[0]  # π.χ. "Human Engagement"
+    for c in get_category_tabs():
+        cat_name = c.TAB_META.get("category") or c.TAB_META.get("label")
+        if cat_name == target_cat_name:
+            return c.TAB_META["id"]
+
+    return fallback_cat_tab_id
+
 # ============================================================
 # HELPERS: SCROLLABLE BAR RENDERING
 # ============================================================
@@ -389,6 +643,82 @@ ORCHESTRATOR_OPTIONS = [
     {"label": "Per Function", "value": "per_function", "disabled": True},
     {"label": "Favorites", "value": "favorites", "disabled": True},
 ]
+
+DEEP_LINKS = [
+    # {"label": "HVDC Dashboard", "href": "/dashboards/hvdc"},
+    # {"label": "Reports • Asset Health", "href": "/reports/asset-health"},
+]
+# ============================================================
+# ORCHESTRATOR MODE POLICY REGISTRY (2-level design)
+# ------------------------------------------------------------
+# Level-1: ORCHESTRATOR_OPTIONS defines what appears in the dropdown.
+# Level-2: ORCHESTRATOR_MODE_POLICIES defines how each enabled mode behaves
+#          for "tool-link" navigation (meta-driven membership checks + fallbacks).
+# ============================================================
+
+def _enabled_orchestrator_modes():
+    """
+    Returns the list of enabled orchestrator mode values as declared in ORCHESTRATOR_OPTIONS.
+    This is the safety allow-list (only these modes are allowed to adopt generic policies).
+    """
+    enabled = []
+    for opt in ORCHESTRATOR_OPTIONS:
+        if not opt.get("disabled", False):
+            enabled.append(opt.get("value"))
+    return enabled
+
+
+# --- Level-2 Policies (behaviour) ---
+# NOTE:
+#  - For now, per_wp & per_category are intentionally "behaviour-aligned":
+#    both attempt navigation only if the tool can be represented in the current mode context.
+#  - Future modes (e.g., favorites) can be added here without touching discovery.
+
+ORCHESTRATOR_MODE_POLICIES = {
+    "per_wp": {
+        "name": "Per Work Package",
+        "membership_meta_field": "workpackages",   # tool declares ["WP4", "WP5", ...]
+        "allows_context_switch": True,             # may switch WP to make tool visible
+    },
+    "per_category": {
+        "name": "Per Category",
+        "membership_meta_field": "categories",     # tool declares category labels
+        "allows_context_switch": False,            # must NOT switch category; fallback to no-op
+    },
+}
+
+# ============================================================
+# OUTILITIY FUNSTIONS
+# ------------------------------------------------------------
+
+def mode_is_supported(mode: str) -> bool:
+    """
+    Safety: only allow policies for modes that are BOTH:
+      - enabled in dropdown (ORCHESTRATOR_OPTIONS)
+      - defined in ORCHESTRATOR_MODE_POLICIES
+    """
+    if not mode:
+        return False
+    return (mode in _enabled_orchestrator_modes()) and (mode in ORCHESTRATOR_MODE_POLICIES)
+
+
+def tool_is_visible_in_current_category(tool_id: str, selected_category: str) -> bool:
+    """
+    True if the tool would be part of the tool list for the currently selected category.
+    This uses the existing category resolver logic (category_label_from_tab_id + services_for_category),
+    so we don't introduce a parallel categorization model.
+    """
+    if not tool_id or not selected_category:
+        return False
+
+    cat_label = category_label_from_tab_id(selected_category)
+    if not cat_label:
+        return False
+
+    tools = services_for_category(cat_label)
+    return any(t.TAB_META.get("id") == tool_id for t in tools)
+
+    
 
 def bar_style():
     # Same behavior as your current scrollable custom bar (#custom-tab-bar),
@@ -772,6 +1102,7 @@ app.layout = html.Div(
         dcc.Store(id="selected-wp-store", data=default_wp_id()),
         dcc.Store(id="selected-tool-store", data=None),
         dcc.Store(id="selected-category-store", data=None),
+        dcc.Store(id="nav-scroll-dummy", data=""),
         dcc.Store(
                 id="tab-view-mode-store",
                 data="per_wp",
@@ -844,10 +1175,6 @@ app.layout = html.Div(
 #         return None
 #     return default_service_for_wp(selected_wp)
 
-# ============================================================
-# CLICK HANDLER: WP BUTTONS + TOOL BUTTONS
-# ============================================================
-
 @app.callback(
     Output("selected-wp-store", "data"),
     Output("selected-tool-store", "data"),
@@ -855,19 +1182,39 @@ app.layout = html.Div(
     Input({"type": "wp-btn", "id": ALL}, "n_clicks"),
     Input({"type": "cat-btn", "id": ALL}, "n_clicks"),
     Input({"type": "tool-btn", "id": ALL}, "n_clicks"),
+    # Input({"type": "tool-link", "target": ALL}, "n_clicks"),
+    Input({"type": "tool-link", "target": ALL, "src": ALL, "uid": ALL}, "n_clicks"),
     State("selected-wp-store", "data"),
     State("selected-category-store", "data"),
     State("selected-tool-store", "data"),
+    State("tab-view-mode-store", "data"),   # <-- NEW: mode-aware link handling
     prevent_initial_call=True
 )
 def handle_bar_clicks(
     wp_clicks,
     cat_clicks,
     tool_clicks,
+    tool_link_clicks,
     selected_wp,
     selected_category,
-    selected_tool
+    selected_tool,
+    mode,   # <-- NEW
 ):
+    """
+    Orchestrator click handler for:
+      - Primary bar (WP buttons OR Category buttons depending on mode)
+      - Secondary bar (Tool buttons)
+      - Hyperlinks emitted anywhere in the UI via pattern id:
+          {"type": "tool-link", "target": <tool-id-or-label>}
+
+    Design constraints (DO NOT break existing behaviour):
+      - Keep existing wp-btn / cat-btn / tool-btn logic unchanged.
+      - Make tool-link navigation mode-aware:
+          * per_wp: may switch WP to make the tool visible
+          * per_category: must NOT switch category; if tool isn't in current category -> no-op
+      - If tool-link cannot resolve to an actual tool -> no-op (no state change)
+    """
+
     ctx = dash.callback_context
     if not ctx.triggered:
         return selected_wp, selected_tool, selected_category
@@ -877,6 +1224,55 @@ def handle_bar_clicks(
     if trigger.startswith("{"):
         tid = json.loads(trigger)
         ttype = tid.get("type")
+
+        # --------------------------------------------------
+        # TOOL-LINK CLICK (works anywhere, not just overviews)
+        # --------------------------------------------------
+        if ttype == "tool-link":
+            target = tid.get("target")
+            tool_id = resolve_tool_id(target)
+
+            # Fallback #1: tool not found -> keep user exactly where they were
+            if not tool_id:
+                return selected_wp, selected_tool, selected_category
+
+            # If mode is not supported (safety), do nothing
+            if not mode_is_supported(mode):
+                return selected_wp, selected_tool, selected_category
+
+            # --- Unified scope-first navigation ---
+            # 1) Prefer staying inside current scope if the tool is already visible there.
+            if tool_is_visible_in_scope(tool_id, mode, selected_wp, selected_category):
+                if mode == "per_category":
+                    effective_cat = selected_category or default_category_id()
+                    return selected_wp, tool_id, effective_cat
+            
+                if mode == "per_wp":
+                    # keep WP (materialize default if missing)
+                    effective_wp = selected_wp or default_wp_id()
+                    return effective_wp, tool_id, selected_category
+            
+                return selected_wp, selected_tool, selected_category  # safety
+            
+            # 2) If not visible in current scope, apply policy fallback.
+            #    - per_category: do NOT switch category (no-op)
+            #    - per_wp: allowed to switch WP to make tool visible
+            if mode == "per_category":
+                effective_cat = selected_category or default_category_id()
+                new_cat = choose_category_tab_for_tool(tool_id, fallback_cat_tab_id=effective_cat)
+                return selected_wp, tool_id, new_cat
+            
+            if mode == "per_wp":
+                effective_wp = selected_wp or default_wp_id()
+                new_wp = choose_wp_for_tool(tool_id, fallback_wp_tab_id=effective_wp)
+                return new_wp, tool_id, selected_category
+            
+            # Safety default (shouldn't happen due to mode_is_supported)
+            return selected_wp, selected_tool, selected_category
+
+        # --------------------------------------------------
+        # Existing logic (UNCHANGED)
+        # --------------------------------------------------
         tid_value = tid.get("id")
 
         # -------------------------
@@ -905,10 +1301,60 @@ def handle_bar_clicks(
 
     return selected_wp, selected_tool, selected_category
 
+## orchestrator function #1 select option to adopt this function
+vars_to_adopt_function_1 = ["per_wp", "per_category"]
 # ============================================================
 # CLICK HANDLER: HEADER VERSION INFO (POPOVER TOGGLE)
 # ============================================================
+@app.callback(
+    Output("tab-view-mode-store", "data", allow_duplicate=True),
+    # Input({"type": "tool-link", "target": ALL}, "n_clicks_timestamp"),
+    Input({"type": "tool-link", "target": ALL, "src": ALL, "uid": ALL}, "n_clicks_timestamp"),
+    State("tab-view-mode-store", "data"),
+    prevent_initial_call=True,
+)
+def force_per_wp_on_tool_link(ts, current_mode):
+    """
+    IMPORTANT:
+    Tool-link navigation is now mode-aware inside `handle_bar_clicks(...)`.
+    We must NOT force-switch modes here, because in per_category the required behaviour is:
+      - if link target is not available in current category -> no-op and remain exactly where you are.
 
+    Therefore this callback is kept only for backwards compatibility of the wiring,
+    but it intentionally performs NO updates.
+    """
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    if not trigger.startswith("{"):
+        raise dash.exceptions.PreventUpdate
+
+    tid = json.loads(trigger)
+    if tid.get("type") != "tool-link":
+        raise dash.exceptions.PreventUpdate
+
+    tool_id = resolve_tool_id(tid.get("target"))
+    if not tool_id:
+        raise dash.exceptions.PreventUpdate
+
+    meta = TOOL_ID_TO_META.get(tool_id) or {}
+    has_categories = bool(meta.get("categories"))
+    has_wps = bool(meta.get("workpackages"))
+
+    # Αν πατήθηκε category overview (categories υπάρχουν, WP όχι),
+    # γύρνα σε per_category.
+    if current_mode == "per_wp" and has_categories and not has_wps:
+        return "per_category"
+
+    # Αν πατήθηκε WP overview (workpackages υπάρχουν, categories όχι),
+    # και είμαστε σε per_category -> γύρνα σε per_wp.
+    if current_mode == "per_category" and has_wps and not has_categories:
+        return "per_wp"
+    
+    raise dash.exceptions.PreventUpdate
+    
 @app.callback(
     Output("app-header-version-visible", "data"),
     Input("app-header-version-btn", "n_clicks"),
@@ -1188,24 +1634,23 @@ def update_orchestrator_status(mode):
     Input("orchestrator-search", "value"),
 )
 def render_orchestrator_options(search):
-    # print("roo")
-    # print(4)
-    # print(search)
     search = (search or "").lower()
+    q = search.strip()
 
     children = []
     search_matches = []
 
     # ------------------------------
-    # SEARCH MATCHES (ADDITIVE)
+    # SEARCH MATCHES (ADDITIVE) – Orchestrator modes
+    # (NO min-length threshold εδώ)
     # ------------------------------
-    if search:
+    if q:
         for opt in ORCHESTRATOR_OPTIONS:
             label = opt["label"]
             value = opt["value"]
             disabled = opt["disabled"]
 
-            if search in label.lower():
+            if q in label.lower():
                 search_matches.append(
                     html.Div(
                         label,
@@ -1217,6 +1662,48 @@ def render_orchestrator_options(search):
     if search_matches:
         children.extend(search_matches)
         children.append(html.Div(className="orch-divider"))
+
+    # ------------------------------
+    # TOOL MATCHES (ADDITIVE)
+    # min-length threshold ONLY for tools
+    # ------------------------------
+    if len(q) >= 2:
+        tool_hits = search_tools(q, limit=8)
+        if tool_hits:
+            children.append(html.Div("Tools", className="orch-group-title"))
+            for hit in tool_hits:
+                children.append(
+                    html.Div(
+                        hit["label"],
+                        id={
+                            "type": "tool-link",
+                            "target": hit["tool_id"],
+                            "src": "orchestrator",
+                            "uid": f"orch-{hit['tool_id']}",
+                        },
+                        className="orch-option orch-option-tool",
+                        n_clicks=0,
+                    )
+                )
+            children.append(html.Div(className="orch-divider"))
+
+    # ------------------------------
+    # DEEP LINKS (ADDITIVE)
+    # min-length threshold ONLY for deep links
+    # ------------------------------
+    if len(q) >= 2:
+        dl_hits = [d for d in DEEP_LINKS if q in d["label"].lower()]
+        if dl_hits:
+            children.append(html.Div("Links", className="orch-group-title"))
+            for d in dl_hits[:8]:
+                children.append(
+                    html.A(
+                        d["label"],
+                        href=d["href"],
+                        className="orch-option orch-option-link",
+                    )
+                )
+            children.append(html.Div(className="orch-divider"))
 
     # ------------------------------
     # FULL LIST (ALWAYS VISIBLE)
@@ -1273,6 +1760,18 @@ def render_orchestrator_options(search):
 #         return value, {"display": "none"}
 
 #     raise dash.exceptions.PreventUpdate
+
+app.clientside_callback(
+    """
+    function(tool_id){
+        if (!tool_id) { return window.dash_clientside.no_update; }
+        window.scrollTo(0,0);
+        return tool_id;
+    }
+    """,
+    Output("nav-scroll-dummy", "data"),
+    Input("selected-tool-store", "data"),
+)
 
 @app.callback(
     Output("orchestrator-panel", "style"),

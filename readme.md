@@ -1,34 +1,28 @@
 # CABLEGNOSIS Dash Application
 
 ## Overview
-This section provides an overview of the first stable alpha release of the platform, focusing on the UI/UX layer and the stabilization of the core codebase.
-The transition from version 0.8.x to 1.0.1 marks the completion of the initial architectural foundation and interaction model.
+This section provides an overview of the first stable alpha release of the platform, focusing on the UI/UX layer and the stabilization of the core codebase.  
+The transition from version **0.8.x** to **1.0.1** marks the completion of the initial architectural foundation and interaction model.
 
-The current release is implemented as a modular Dash-based demonstration platform for power cable monitoring, synthetic data generation, and partner data integration.
-The application follows a production-oriented architectural logic, while remaining lightweight and demo-friendly.
+Modular Dash-based demonstration platform for power cable monitoring,
+synthetic data generation, and partner data integration.
 
-In the next phase of the project (M19+), the platform is planned to gradually transition to a modern React/JavaScript-based frontend, in alignment with current industry best practices for scalable and extensible UI development. This transition will enable the integration of more advanced interaction patterns, such as GUI-based drag-and-drop composition of views and workflows, dynamic component rendering, state-driven UI orchestration, and tighter coupling with real-time data and backend services.
-
-At the same time, the current Dash-based implementation will continue to play a complementary role, serving as a flexible environment for rapid prototyping, experimentation, and mock-up development. This dual approach is intended to preserve the platform’s adaptability and to support fast integration of emerging tools and concepts without compromising architectural consistency.
+This application is designed with a **production-oriented architecture**
+while remaining lightweight and demo-friendly.
 
 ---
 
 ## Project Structure
 
+```text
+.
 ├── app.py
-
 ├── README.md
-
 ├── assets/
-
 ├── tabs/
-
 ├── tabs_core/
-
 ├── logic/
-
 ├── utils/
-
 └── data/
 
 ## High-Level Architecture
@@ -208,11 +202,34 @@ This structure enables:
 ---
 
 ## Next Steps
-
 Further refinement, feature expansion, and performance optimization will continue in subsequent releases.
 
 
+### 2026-02-09
 
+**Version:** 1.0.2  
+**Build:** app_v4.2.11  
 
+1. **Tool-link navigation intent (global, meta-driven)**
+   - Introduced a generic hyperlink navigation primitive usable anywhere in the UI:
+     `id={"type":"tool-link","target":<tool_id_or_label>}`.
+   - Enables “Open tool →” links inside overview pages and any future template pages
+     without coupling to specific tabs or routes.
+   - Safe fallback: if a target cannot be resolved to a loaded tool, no state changes occur.
 
+2. **Mode-aware navigation policy (Per Work Package & Per Category)**
+   - Tool-link navigation is now aware of the orchestrator mode:
+     - **Per Work Package:** selects the tool and may switch WP context so the tool is visible in the WP tool-bar.
+     - **Per Category:** selects the tool only if it is visible in the current category; otherwise no-op (no “teleporting”).
+   - Preserves predictable UX and prevents inconsistent states (e.g., tool selected but not reachable in the current bar).
 
+3. **Two-level orchestrator design: Dropdown options vs Behaviour policies**
+   - Separated:
+     - **Level 1:** modes declared/enabled in the orchestrator dropdown (allow-list).
+     - **Level 2:** per-mode behaviour policies (how navigation behaves, what context switching is allowed).
+   - This keeps the system extensible for future modes (e.g., Favorites) while keeping the existing orchestration stable.
+
+4. **Backwards-compatible wiring & stability safeguards**
+   - Avoided changes to discovery and tab loading.
+   - Prevented forced mode switching on hyperlink navigation to respect per-category requirements.
+   - Included initialization-order safeguards to avoid NameError issues when building registries.

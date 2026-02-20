@@ -5,7 +5,7 @@ TAB_META = {
     "id": "wp3",
     "label": "WP3 – Requirements engineering and validation planning",
     "type": "workpackage",
-    "order": 5,
+    "order": 14,
     "wp": "WP3",
     "role": "Superconducting cable assessment and design",
     "scope": "Design, aging studies, and feasibility assessment of superconducting HVDC cables",

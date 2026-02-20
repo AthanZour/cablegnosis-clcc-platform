@@ -5,7 +5,7 @@ TAB_META = {
     "id": "wp6",
     "label": "WP6 – Validation, testing and evaluation of results",
     "type": "workpackage",
-    "order": 2,
+    "order": 13,
     "wp": "WP6",
     "role": "Demonstration in real use cases",
     "scope": "Demonstration and replication of CABLEGNOSIS solutions in European pilots",

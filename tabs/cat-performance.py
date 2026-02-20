@@ -4,7 +4,7 @@ TAB_META = {
     "id": "cat-performance",
     "label": "Cable Performance & Optimization",
     "type": "category",
-    "order": 110,
+    "order": 101,
     "category": "Cable Performance & Optimization",
     "version": "conceptual"
 }
@@ -17,8 +17,9 @@ def layout():
 
             html.P(
                 "This category focuses on cable performance assessment, "
-                "optimization techniques, and predictive models supporting "
-                "lifecycle optimization."
+                "optimization techniques, and fault detection using "
+                "machine learning and artificial intelligence algorithms "
+                "supporting lifecycle optimization."
             ),
 
             html.Hr(),
@@ -27,7 +28,7 @@ def layout():
                 className="placeholder-box",
                 children=[
                     html.Img(
-                        src="/assets/hvdc_cable.jpg",
+                        src="/assets/fault_detection.jpeg",
                         style={
                             "width": "65%",
                             "margin": "20px auto",
@@ -36,8 +37,8 @@ def layout():
                     ),
 
                     html.P(
-                        "Performance-related analytics, optimization algorithms, "
-                        "and predictive maintenance services will be integrated here.",
+                        "AI-based analytics, optimization algorithms, "
+                        "and fault detection services will be integrated here.",
                         style={
                             "textAlign": "center",
                             "fontStyle": "italic"
